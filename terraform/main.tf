@@ -71,7 +71,7 @@ resource "azurerm_app_service" "frontend" {
     DOCKER_REGISTRY_SERVER_URL      = "https://${local.acr_login_server}"
     DOCKER_REGISTRY_SERVER_USERNAME = local.acr_admin_username
     DOCKER_REGISTRY_SERVER_PASSWORD = local.acr_admin_password
-    DOCKER_ENABLE_CI                = true
+    DOCKER_ENABLE_CI                = "true"
   }
 }
 
@@ -91,11 +91,11 @@ resource "azurerm_app_service" "backend" {
     DOCKER_REGISTRY_SERVER_URL      = "https://${local.acr_login_server}"
     DOCKER_REGISTRY_SERVER_USERNAME = local.acr_admin_username
     DOCKER_REGISTRY_SERVER_PASSWORD = local.acr_admin_password
-    DOCKER_ENABLE_CI                = true
+    DOCKER_ENABLE_CI                = "true"
   }
 }
 
-# 🌐 Outputs for linking (optional)
+# 🌐 Output URLs
 output "frontend_url" {
   value = "https://${local.frontend_hostname}"
 }

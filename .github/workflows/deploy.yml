@@ -54,3 +54,8 @@ jobs:
       - name: 🚀 Terraform Apply
         working-directory: ./terraform
         run: terraform apply -auto-approve
+
+      - name: 🔄 Restart Azure App Services (Force Re-pull)
+        run: |
+          az webapp restart --name vite-container-frontend --resource-group $RESOURCE_GROUP
+          az webapp restart --name express-container-backend --resource-group $RESOURCE_GROUP
