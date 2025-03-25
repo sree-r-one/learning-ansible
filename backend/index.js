@@ -11,7 +11,7 @@ app.use(
 );
 
 app.get("/api", (req, res) => {
-  res.send("Hello from Express backend!");
+  res.json({ message: "Hello from Express backend!" }); // ✅ returns JSON
 });
 
 app.listen(port, () => {
