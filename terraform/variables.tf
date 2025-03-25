@@ -9,3 +9,7 @@ variable "location" {
 variable "acr_name" {
   default = "terraformlearning"
 }
+
+variable "subscription_id" {
+  description = "Your Azure subscription ID"
+}
