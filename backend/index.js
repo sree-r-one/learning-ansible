@@ -24,7 +24,9 @@ app.use(
 );
 
 app.get("/api", (req, res) => {
-  res.json({ message: "Hello from Express backend!" });
+  res.json({
+    message: "Hello from Express backend! This is terraform working correctly",
+  });
 });
 
 app.listen(port, () => {
