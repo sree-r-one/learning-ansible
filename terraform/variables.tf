@@ -1,5 +1,5 @@
 variable "resource_group_name" {
-  default = "myapp-resource-group"
+  default = "terraform-learning-rg"
 }
 
 variable "location" {
@@ -7,5 +7,5 @@ variable "location" {
 }
 
 variable "acr_name" {
-  default = "myappacr12345"
+  default = "terraformlearning"
 }
