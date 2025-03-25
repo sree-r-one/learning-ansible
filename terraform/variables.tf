@@ -19,3 +19,15 @@ variable "create_acr" {
   type        = bool
   default     = false
 }
+
+variable "create_plan" {
+  description = "Whether to create the App Service Plan (true) or use existing (false)"
+  type        = bool
+  default     = false
+}
+
+variable "app_service_plan_name" {
+  description = "Name of the App Service Plan"
+  type        = string
+  default     = "container-app-plan"
+}
