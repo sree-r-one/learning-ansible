@@ -28,6 +28,10 @@ jobs:
         run: |
           az acr login --name $ACR_NAME
 
+      - name: 🔐 Inject VITE_API_URL from GitHub Secret
+        run: |
+          echo "VITE_API_URL=${{ secrets.FRONTEND_API_URL }}" > ./frontend/.env.production
+
       - name: 🐳 Build and Push Frontend
         run: |
           docker build -t $ACR_LOGIN_SERVER/frontend:latest ./frontend
