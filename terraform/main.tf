@@ -29,14 +29,11 @@ resource "azurerm_service_plan" "plan" {
   name                = var.app_service_plan_name
   location            = var.location
   resource_group_name = var.resource_group_name
-  kind                = "Linux"
-  reserved            = true
 
-  sku {
-    tier = "Basic"
-    size = "B1"
-  }
+  os_type   = "Linux"
+  sku_name  = "B1"
 }
+
 
 # 💡 Smart selectors
 locals {
