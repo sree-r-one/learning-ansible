@@ -31,3 +31,16 @@ variable "app_service_plan_name" {
   type        = string
   default     = "container-app-plan"
 }
+
+variable "create_frontend" {
+  description = "Whether to create the frontend App Service"
+  type        = bool
+  default     = false
+}
+
+variable "create_backend" {
+  description = "Whether to create the backend App Service"
+  type        = bool
+  default     = false
+}
+
