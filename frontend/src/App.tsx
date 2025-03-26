@@ -20,7 +20,7 @@ const App = () => {
   return (
     <div>
       <h1>Hello from Vite + React + TypeScript</h1>
-      <p>Backend says: {message}</p>
+      <p>Backend says its updated: {message}</p>
     </div>
   );
 };

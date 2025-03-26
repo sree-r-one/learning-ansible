@@ -25,7 +25,8 @@ app.use(
 
 app.get("/api", (req, res) => {
   res.json({
-    message: "Hello from Express backend! This is terraform working correctly",
+    message:
+      "Hello from Express backend! This is terraform working correctly with updated readme",
   });
 });
 
