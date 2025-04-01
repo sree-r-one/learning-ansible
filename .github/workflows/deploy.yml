@@ -1,4 +1,4 @@
-name: Build and Deploy to Azure
+name: Build and Deploy to Docker Hub
 
 on:
   push:
@@ -6,10 +6,8 @@ on:
       - main
 
 env:
-  ACR_NAME: terraformlearning
-  RESOURCE_GROUP: terraform-learning-rg
-  LOCATION: West Europe
-  ACR_LOGIN_SERVER: terraformlearning.azurecr.io
+  DOCKERHUB_IMAGE_FRONTEND: yourdockerhubusername/tradeport-frontend
+  DOCKERHUB_IMAGE_BACKEND: yourdockerhubusername/tradeport-backend
 
 jobs:
   deploy:
@@ -19,28 +17,22 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v3
 
-      - name: 🔐 Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 🔁 Login to ACR
-        run: |
-          az acr login --name $ACR_NAME
-
       - name: 🔐 Inject VITE_API_URL from GitHub Secret
         run: |
-          echo "VITE_API_URL=${{ secrets.FRONTEND_API_URL }}" > ./frontend/.env.production
+          echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > ./frontend/.env.production
 
-      - name: 🐳 Build and Push Frontend
-        run: |
-          docker build -t $ACR_LOGIN_SERVER/frontend:latest ./frontend
-          docker push $ACR_LOGIN_SERVER/frontend:latest
+      - name: 🐳 Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: 🐳 Build and Push Backend
+      - name: 🐳 Build and Push Frontend (Dev)
         run: |
-          docker build -t $ACR_LOGIN_SERVER/backend:latest ./backend
-          docker push $ACR_LOGIN_SERVER/backend:latest
+          docker build -t $DOCKERHUB_IMAGE_FRONTEND:latest -f ./frontend/Dockerfile.dev ./frontend
+          docker push $DOCKERHUB_IMAGE_FRONTEND:latest
+
+      - name: 🐳 Build and Push Backend (Dev)
+        run: |
+          docker build -t $DOCKERHUB_IMAGE_BACKEND:latest -f ./backend/Dockerfile.dev ./backend
+          docker push $DOCKERHUB_IMAGE_BACKEND:latest
 
       - name: ⚙️ Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -54,8 +46,3 @@ jobs:
       - name: 🚀 Terraform Apply
         working-directory: ./terraform
         run: terraform apply -auto-approve
-
-      - name: 🔄 Restart Azure App Services (Force Re-pull)
-        run: |
-          az webapp restart --name vite-container-frontend --resource-group $RESOURCE_GROUP
-          az webapp restart --name express-container-backend --resource-group $RESOURCE_GROUP

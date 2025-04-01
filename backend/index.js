@@ -5,8 +5,8 @@ const port = 3000;
 
 // Allow both local dev and production frontend URLs
 const allowedOrigins = [
-  "http://localhost:5173", // ✅ Local dev (from Docker/Vite)
-  "https://vite-container-frontend.azurewebsites.net", // ✅ Azure deployed frontend
+  "http://localhost:5173", // browser running on host machine
+  "http://frontend:5173", // frontend container in Docker
 ];
 
 app.use(
