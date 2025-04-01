@@ -23,7 +23,18 @@ jobs:
         with:
           fetch-depth: 0 # Fetches all history for all tags and branches
 
+      - name: Check for package.json
+        id: check-package-json
+        run: |
+          if [ -f "package.json" ]; then
+            echo "package_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "package_exists=false" >> $GITHUB_OUTPUT
+            echo "No package.json found. Skipping Node.js setup and ESLint."
+          fi
+
       - name: Setup Node.js ${{ matrix.node-version }}
+        if: steps.check-package-json.outputs.package_exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
@@ -32,6 +43,7 @@ jobs:
           cache-dependency-path: "**/package-lock.json"
 
       - name: Cache node_modules
+        if: steps.check-package-json.outputs.package_exists == 'true'
         uses: actions/cache@v3
         id: cache-nodemodules
         with:
@@ -42,6 +54,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install Dependencies
+        if: steps.check-package-json.outputs.package_exists == 'true'
         # Remove working-directory if package.json is in the root
         run: |
           if [ ! -f package-lock.json ]; then
@@ -50,11 +63,18 @@ jobs:
           npm ci
 
       - name: Run ESLint and Generate Report
+        if: steps.check-package-json.outputs.package_exists == 'true'
         # Remove working-directory if your source is in the root
         run: |
           mkdir -p reports
           # Update the source directory and file extensions as needed
           npx eslint . --ext .js,.jsx,.ts,.tsx -f stylish > reports/eslint-report.txt || true
+
+      - name: Create placeholder report
+        if: steps.check-package-json.outputs.package_exists == 'false'
+        run: |
+          mkdir -p reports
+          echo "No package.json found. ESLint analysis was skipped." > reports/eslint-report.txt
 
       - name: Archive ESLint Report
         uses: actions/upload-artifact@v4
