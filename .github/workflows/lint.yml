@@ -1,39 +1,48 @@
-name: "eslint-tool-scan"
+name: "ESLint Code Analysis"
 
 on:
   push:
     branches: [main, develop, githubcicd]
   pull_request:
     branches: [main, develop]
+  # Optional: Enable manual triggering from GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
-  test:
+  lint:
+    name: ESLint Analysis
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
         node-version: [20.x]
+        # Add other versions if needed: [16.x, 18.x, 20.x]
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history for all tags and branches
 
-      - name: Setup Node.js
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
+          # Change this path if your package.json is not in the root
+          cache-dependency-path: "**/package-lock.json"
 
       - name: Cache node_modules
         uses: actions/cache@v3
         id: cache-nodemodules
         with:
-          path: frontend/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          # Update this path to match your project structure
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
       - name: Install Dependencies
-        working-directory: frontend
+        # Remove working-directory if package.json is in the root
         run: |
           if [ ! -f package-lock.json ]; then
             npm install
@@ -41,14 +50,16 @@ jobs:
           npm ci
 
       - name: Run ESLint and Generate Report
-        working-directory: frontend
+        # Remove working-directory if your source is in the root
         run: |
           mkdir -p reports
-          npx eslint src --ext .ts,.tsx -f stylish > reports/eslint-report.txt || true
+          # Update the source directory and file extensions as needed
+          npx eslint . --ext .js,.jsx,.ts,.tsx -f stylish > reports/eslint-report.txt || true
 
       - name: Archive ESLint Report
         uses: actions/upload-artifact@v4
         with:
           name: eslint-report
           path: |
-            frontend/reports/eslint-report.txt
+            reports/eslint-report.txt
+          retention-days: 14 # Set how long to keep the artifacts
