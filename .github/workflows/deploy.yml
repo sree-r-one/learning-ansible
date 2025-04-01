@@ -6,8 +6,8 @@ on:
       - main
 
 env:
-  DOCKERHUB_IMAGE_FRONTEND: yourdockerhubusername/tradeport-frontend
-  DOCKERHUB_IMAGE_BACKEND: yourdockerhubusername/tradeport-backend
+  DOCKERHUB_IMAGE_FRONTEND: sreerajrone/tradeport-frontend
+  DOCKERHUB_IMAGE_BACKEND: sreerajrone/tradeport-backend
 
 jobs:
   deploy:
