@@ -1,4 +1,4 @@
-name: "ESLint Code Analysis"
+name: Stage 2 – ESLint Code Analysis
 
 on:
   push:

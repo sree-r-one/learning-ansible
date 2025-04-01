@@ -1,4 +1,4 @@
-name: "Security Analysis Scan"
+name: Stage 3 – Security Scan
 
 on:
   push:
