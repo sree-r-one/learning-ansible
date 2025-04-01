@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 📦 Install Dependencies
         working-directory: frontend
@@ -23,7 +23,7 @@ jobs:
         run: scripts/eslint-script.sh
 
       - name: 📤 Upload ESLint Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: eslint-report
           path: frontend/lint-reports/eslint-report.txt
