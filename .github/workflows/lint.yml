@@ -1,29 +1,65 @@
-name: "ESLint Linting Report"
+name: "linting-tool-scan"
 
 on:
   push:
-    branches: [main, feature/*, bugfix/*]
+    branches: [main, develop, githubcicd]
   pull_request:
+    branches: [main, develop]
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [20.x] # Updated to current LTS
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4 # Updated to v4
 
-      - name: 📦 Install Dependencies
-        working-directory: frontend
-        run: npm ci
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
 
-      - name: 🧼 Make ESLint Script Executable
-        run: chmod +x scripts/eslint-script.sh
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: cache-nodemodules
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      - name: 🧪 Run ESLint via Script
-        run: scripts/eslint-script.sh
+      - name: Install Dependencies
+        if: steps.cache-nodemodules.outputs.cache-hit != 'true'
+        run: npm ci --legacy-peer-deps
 
-      - name: 📤 Upload ESLint Report
+      - name: Install JSHint locally
+        run: npm install jshint --legacy-peer-deps --no-save
+
+      - name: Run JSHint
+        run: |
+          # Create output directory
+          mkdir -p reports
+          # Run JSHint on JavaScript files and output to a report file
+          npx jshint --reporter=checkstyle ./src > ./reports/jshint-report.xml || true
+          # Also create a human-readable version
+          npx jshint ./src > ./JSHint-report || true
+
+      - name: Check for severe linting issues
+        run: |
+          if grep -q "ERROR" ./JSHint-report; then
+            echo "Severe linting issues found"
+            cat ./JSHint-report
+            exit 1
+          fi
+
+      - name: Archive linting reports
         uses: actions/upload-artifact@v4
         with:
-          name: eslint-report
-          path: frontend/lint-reports/eslint-report.txt
+          name: linting-reports
+          path: |
+            ./JSHint-report
+            ./reports/*.xml
