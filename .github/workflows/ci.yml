@@ -1,4 +1,4 @@
-name: CI – Build, Lint, Test
+name: CI – Build Only
 
 on:
   pull_request:
@@ -11,21 +11,42 @@ on:
       - bugfix/*
 
 jobs:
-  ci:
+  build:
+    name: Build Application
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install and Test Frontend
+      - name: Check Frontend Directory
+        id: check-frontend
+        run: |
+          if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+            echo "frontend_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "frontend_exists=false" >> $GITHUB_OUTPUT
+            echo "No frontend directory with package.json found. Skipping frontend build."
+          fi
+
+      - name: Check Backend Directory
+        id: check-backend
+        run: |
+          if [ -d "backend" ] && [ -f "backend/package.json" ]; then
+            echo "backend_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "backend_exists=false" >> $GITHUB_OUTPUT
+            echo "No backend directory with package.json found. Skipping backend build."
+          fi
+
+      - name: Install and Build Frontend
+        if: steps.check-frontend.outputs.frontend_exists == 'true'
         working-directory: frontend
         run: |
           npm ci
-        #   npm run lint
-        #   npm run test
+          npm run build
 
-      - name: Install and Test Backend
+      - name: Install and Build Backend
+        if: steps.check-backend.outputs.backend_exists == 'true'
         working-directory: backend
         run: |
           npm ci
-        #   npm run lint
-        #   npm run test
+          npm run build
