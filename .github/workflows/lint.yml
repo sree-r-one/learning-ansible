@@ -34,8 +34,11 @@ jobs:
 
       - name: Install Dependencies
         working-directory: frontend
-        if: steps.cache-nodemodules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: |
+          if [ ! -f package-lock.json ]; then
+            npm install
+          fi
+          npm ci
 
       - name: Run ESLint and Generate Report
         working-directory: frontend
