@@ -1,0 +1,10 @@
+
+D:\learning-projects\learning-ansible\frontend\src\App.tsx
+   1:44  error  Strings must use singlequote  quotes
+   4:50  error  Strings must use singlequote  quotes
+  12:36  error  Strings must use singlequote  quotes
+  16:20  error  Strings must use singlequote  quotes
+
+✖ 4 problems (4 errors, 0 warnings)
+  4 errors and 0 warnings potentially fixable with the `--fix` option.
+

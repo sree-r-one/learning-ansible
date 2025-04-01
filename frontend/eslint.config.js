@@ -1,16 +1,23 @@
-import js from "@eslint/js";
-import globals from "globals";
+import tseslint from "typescript-eslint";
 
 export default [
-  js.configs.recommended,
   {
+    files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
-      globals: {
-        ...globals.browser,
+      parser: tseslint.parser,
+      parserOptions: {
+        project: "./tsconfig.json",
+        sourceType: "module",
+        ecmaFeatures: { jsx: true },
       },
     },
+    plugins: {
+      "@typescript-eslint": tseslint.plugin,
+    },
     rules: {
-      // Your custom rules here
+      "@typescript-eslint/no-unused-vars": "warn",
+      semi: ["error", "always"],
+      quotes: ["error", "single"],
     },
   },
 ];
