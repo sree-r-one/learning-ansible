@@ -1,0 +1,29 @@
+name: "ESLint Linting Report"
+
+on:
+  push:
+    branches: [main, feature/*, bugfix/*]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 📦 Install Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: 🧼 Make ESLint Script Executable
+        run: chmod +x scripts/eslint-script.sh
+
+      - name: 🧪 Run ESLint via Script
+        run: scripts/eslint-script.sh
+
+      - name: 📤 Upload ESLint Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: eslint-report
+          path: frontend/lint-reports/eslint-report.txt
