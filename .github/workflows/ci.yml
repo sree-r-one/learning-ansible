@@ -19,13 +19,13 @@ jobs:
       - name: Install and Test Frontend
         working-directory: frontend
         run: |
-          npm install
+          npm ci
         #   npm run lint
         #   npm run test
 
       - name: Install and Test Backend
         working-directory: backend
         run: |
-          npm install
+          npm ci
         #   npm run lint
         #   npm run test
