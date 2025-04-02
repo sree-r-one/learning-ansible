@@ -1,4 +1,4 @@
-name: Build and Deploy to Docker Hub
+name: Build and Deploy to Digital Ocean
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   DOCKERHUB_IMAGE_BACKEND: sreerajrone/tradeport-backend
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,25 +24,88 @@ jobs:
       - name: 🐳 Log in to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: 🐳 Build and Push Frontend (Dev)
+      # Build and push frontend image
+      - name: 🐳 Build and Push Frontend
         run: |
           docker build -t $DOCKERHUB_IMAGE_FRONTEND:latest -f ./frontend/Dockerfile.dev ./frontend
           docker push $DOCKERHUB_IMAGE_FRONTEND:latest
 
-      - name: 🐳 Build and Push Backend (Dev)
+      # Build and push backend image
+      - name: 🐳 Build and Push Backend
         run: |
           docker build -t $DOCKERHUB_IMAGE_BACKEND:latest -f ./backend/Dockerfile.dev ./backend
           docker push $DOCKERHUB_IMAGE_BACKEND:latest
 
+      # Set up Terraform
       - name: ⚙️ Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.7
 
+      # Initialize Terraform
       - name: 🧱 Terraform Init
         working-directory: ./terraform
         run: terraform init
 
+      # Apply Terraform configuration to create/update infrastructure
       - name: 🚀 Terraform Apply
         working-directory: ./terraform
-        run: terraform apply -auto-approve
+        run: |
+          terraform apply -auto-approve \
+            -var "do_token=${{ secrets.DO_TOKEN }}" \
+            -var "ssh_key_id=${{ secrets.SSH_KEY_ID }}"
+
+      # Get the droplet IP address as output from Terraform
+      - name: 📝 Get Droplet IP
+        id: droplet-ip
+        working-directory: ./terraform
+        run: |
+          echo "DROPLET_IP=$(terraform output -raw droplet_ip)" >> $GITHUB_ENV
+
+      # Set up SSH key for Ansible
+      - name: 🔑 Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.DROPLET_IP }} >> ~/.ssh/known_hosts
+
+      # Create dynamic inventory for Ansible
+      - name: 📝 Create Ansible inventory
+        run: |
+          echo "[tradeport]" > ansible/inventory.ini
+          echo "${{ env.DROPLET_IP }} ansible_user=root" >> ansible/inventory.ini
+
+      # Set up Python for Ansible
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      # Install Ansible
+      - name: 🛠️ Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+
+      # Run Ansible provision playbook to set up Docker and dependencies
+      - name: 🏗️ Run Ansible provision playbook
+        working-directory: ./ansible
+        run: |
+          ansible-playbook -i inventory.ini provision.yml
+
+      # Run Ansible deploy playbook to deploy application with Docker Compose
+      - name: 🚢 Run Ansible deploy playbook
+        working-directory: ./ansible
+        run: |
+          ansible-playbook -i inventory.ini deploy.yml
+
+      # Verify deployment health
+      - name: 🔍 Verify deployment
+        run: |
+          # Wait for services to start
+          sleep 30
+          # Check frontend availability
+          curl -sSf http://${{ env.DROPLET_IP }}:5173 || echo "Frontend may still be starting"
+          # Check backend availability
+          curl -sSf http://${{ env.DROPLET_IP }}:3000/api/health || echo "Backend may still be starting"
