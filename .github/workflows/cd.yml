@@ -1,27 +1,17 @@
-name: Build and Deploy to Digital Ocean
+name: Deploy to DigitalOcean Droplet
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-    inputs:
-      create_droplet:
-        description: "Create new droplet?"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "true"
-          - "false"
 
 env:
   DOCKERHUB_IMAGE_FRONTEND: sreerajrone/tradeport-frontend
   DOCKERHUB_IMAGE_BACKEND: sreerajrone/tradeport-backend
-  TF_VAR_create_droplet: ${{ github.event.inputs.create_droplet || 'false' }}
+  REMOTE_DIR: /root/tradeport
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -36,151 +26,38 @@ jobs:
       - name: 🐳 Log in to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      # Build and push frontend image
-      - name: 🐳 Build and Push Frontend
+      - name: 🐳 Build and Push Frontend Image
         run: |
           docker build -t $DOCKERHUB_IMAGE_FRONTEND:latest -f ./frontend/Dockerfile.dev ./frontend
           docker push $DOCKERHUB_IMAGE_FRONTEND:latest
 
-      # Build and push backend image
-      - name: 🐳 Build and Push Backend
+      - name: 🐳 Build and Push Backend Image
         run: |
           docker build -t $DOCKERHUB_IMAGE_BACKEND:latest -f ./backend/Dockerfile.dev ./backend
           docker push $DOCKERHUB_IMAGE_BACKEND:latest
 
-      # Set up Terraform
-      - name: ⚙️ Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.7
-
-      # Initialize Terraform
-      - name: 🧱 Terraform Init
-        working-directory: ./terraform
-        run: terraform init
-
-      # Export SSH private key as a Terraform variable
-      - name: 🔑 Export SSH private key for Terraform
-        run: |
-          echo "TF_VAR_ssh_private_key_content<<EOF" >> $GITHUB_ENV
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      # Add plan step for visibility
-      - name: 📊 Terraform Plan
-        working-directory: ./terraform
-        run: |
-          terraform plan \
-            -var "do_token=${{ secrets.DO_TOKEN }}" \
-            -var "ssh_key_id=${{ secrets.SSH_KEY_ID }}" \
-            -var "create_droplet=${{ env.TF_VAR_create_droplet }}"
-
-      # Apply Terraform configuration with error handling
-      - name: 🚀 Terraform Apply
-        working-directory: ./terraform
-        run: |
-          terraform apply -auto-approve \
-            -var "do_token=${{ secrets.DO_TOKEN }}" \
-            -var "ssh_key_id=${{ secrets.SSH_KEY_ID }}" \
-            -var "create_droplet=${{ env.TF_VAR_create_droplet }}" || {
-              echo "Terraform apply failed"
-              exit 1
-            }
-
-      - name: 📝 Get Droplet IP
-        id: get_ip
-        working-directory: ./terraform
-        run: |
-          IP=$(terraform output -raw droplet_ip)
-          if [ -z "$IP" ]; then
-            echo "Failed to get droplet IP"
-            exit 1
-          fi
-          echo "DROPLET_IP=$IP" >> $GITHUB_ENV
-          echo "Droplet IP: $IP"
-
-      # Set up SSH key for Ansible with proper permissions and cleanup
       - name: 🔑 Set up SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ env.DROPLET_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts
 
-      # Wait for SSH to be available
-      - name: ⏳ Wait for SSH to be available
-        run: |
-          for i in {1..10}; do
-            if ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@${{ env.DROPLET_IP }} 'echo SSH is up'; then
-              echo "SSH is up!"
-              break
-            fi
-            if [ $i -eq 10 ]; then
-              echo "SSH did not come up in time"
-              exit 1
-            fi
-            echo "Waiting for SSH to come up... (attempt $i/10)"
-            sleep 15
-          done
-
-      # Create dynamic inventory for Ansible
-      - name: 📝 Create Ansible inventory
-        run: |
-          echo "[tradeport]" > ansible/inventory.ini
-          echo "${{ env.DROPLET_IP }} ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa" >> ansible/inventory.ini
-
-      # Set up Python for Ansible
-      - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+      - name: 🚀 Pull & Restart Containers on Droplet
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          python-version: "3.10"
+          host: ${{ secrets.DROPLET_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ env.REMOTE_DIR }}
+            echo "Pulling updated images from Docker Hub..."
+            docker compose -f dockercompose.dev.yml pull
+            echo "Recreating containers with latest images..."
+            docker compose -f dockercompose.dev.yml up -d --force-recreate
 
-      # Install Ansible
-      - name: 🛠️ Install Ansible
-        run: |
-          python -m pip install --upgrade pip
-          pip install ansible
-
-      # Prepare Ansible environment variables
-      - name: 🔧 Set Ansible environment variables
-        run: |
-          echo "ANSIBLE_HOST_KEY_CHECKING=False" >> $GITHUB_ENV
-          echo "DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" >> $GITHUB_ENV
-          echo "DOCKERHUB_TOKEN=${{ secrets.DOCKERHUB_TOKEN }}" >> $GITHUB_ENV
-
-      # Run Ansible provision playbook to set up Docker and dependencies
-      - name: 🏗️ Run Ansible provision playbook
-        working-directory: ./ansible
-        run: |
-          ansible-playbook -i inventory.ini provision.yml -v
-
-      # Run Ansible deploy playbook to deploy application with Docker Compose
-      - name: 🚢 Run Ansible deploy playbook
-        working-directory: ./ansible
-        run: |
-          ansible-playbook -i inventory.ini deploy.yml -v
-
-      # Verify deployment health
-      - name: 🔍 Verify deployment
-        run: |
-          # Wait for services to start
-          sleep 30
-          # Check frontend availability
-          curl -sSf http://${{ env.DROPLET_IP }}:5173 || echo "Frontend may still be starting"
-          # Check backend availability
-          curl -sSf http://${{ env.DROPLET_IP }}:3000/api || echo "Backend may still be starting"
-
-      # Add deployment summary
       - name: 📋 Deployment Summary
         run: |
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Droplet IP:** ${{ env.DROPLET_IP }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Frontend URL:** http://${{ env.DROPLET_IP }}:5173" >> $GITHUB_STEP_SUMMARY
-          echo "- **Backend API URL:** http://${{ env.DROPLET_IP }}:3000/api" >> $GITHUB_STEP_SUMMARY
-          echo "- **Created new droplet:** ${{ env.TF_VAR_create_droplet }}" >> $GITHUB_STEP_SUMMARY
-
-      # Add cleanup step at the end of the workflow
-      - name: 🧹 Cleanup sensitive data
-        if: always()
-        run: |
-          rm -f ~/.ssh/id_rsa
+          echo "- **Frontend URL:** http://${{ secrets.DROPLET_IP }}:5173" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend API URL:** http://${{ secrets.DROPLET_IP }}:3000/api" >> $GITHUB_STEP_SUMMARY
