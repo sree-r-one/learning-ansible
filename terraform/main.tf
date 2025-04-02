@@ -31,7 +31,5 @@ resource "digitalocean_droplet" "tradeport" {
 
 # 3️⃣ Output IP from whichever was selected
 output "droplet_ip" {
-  value = var.create_droplet ?
-    digitalocean_droplet.tradeport[0].ipv4_address :
-    data.digitalocean_droplet.existing[0].ipv4_address
+  value = var.create_droplet ? digitalocean_droplet.tradeport[0].ipv4_address : data.digitalocean_droplet.existing[0].ipv4_address
 }
