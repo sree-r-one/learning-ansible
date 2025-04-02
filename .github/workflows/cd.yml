@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       create_droplet:
-        description: 'Create new droplet?'
+        description: "Create new droplet?"
         required: true
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'true'
-          - 'false'
+          - "true"
+          - "false"
 
 env:
   DOCKERHUB_IMAGE_FRONTEND: sreerajrone/tradeport-frontend
@@ -23,7 +23,7 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
@@ -62,7 +62,9 @@ jobs:
       # Export SSH private key as a Terraform variable
       - name: 🔑 Export SSH private key for Terraform
         run: |
-          echo "TF_VAR_ssh_private_key_content=\"${{ secrets.SSH_PRIVATE_KEY }}\"" >> $GITHUB_ENV
+          echo "TF_VAR_ssh_private_key_content<<EOF" >> $GITHUB_ENV
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       # Add plan step for visibility
       - name: 📊 Terraform Plan
@@ -104,7 +106,7 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ env.DROPLET_IP }} >> ~/.ssh/known_hosts
-          
+
       # Wait for SSH to be available
       - name: ⏳ Wait for SSH to be available
         run: |
@@ -167,7 +169,7 @@ jobs:
           curl -sSf http://${{ env.DROPLET_IP }}:5173 || echo "Frontend may still be starting"
           # Check backend availability
           curl -sSf http://${{ env.DROPLET_IP }}:3000/api || echo "Backend may still be starting"
-          
+
       # Add deployment summary
       - name: 📋 Deployment Summary
         run: |

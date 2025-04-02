@@ -40,14 +40,22 @@ variable "ssh_key_id" {
 }
 
 variable "ssh_private_key_content" {
-  description = "Content of the SSH private key (alternative to ssh_private_key_path)"
+  description = <<EOT
+The actual content of the SSH private key.
+Use this variable in CI/CD environments (e.g., GitHub Actions) to inject the key content securely using TF_VAR_ssh_private_key_content.
+If this is empty, Terraform will fallback to ssh_private_key_path.
+EOT
   type        = string
   default     = ""
   sensitive   = true
 }
 
 variable "ssh_private_key_path" {
-  description = "Path to the SSH private key file (used if ssh_private_key_content is empty)"
+  description = <<EOT
+Path to the SSH private key file.
+Used when ssh_private_key_content is not provided.
+Useful for local development where the key file exists in the file system.
+EOT
   type        = string
   default     = "~/.ssh/id_rsa"
 }
