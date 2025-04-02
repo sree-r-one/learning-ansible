@@ -1,5 +1,4 @@
----
-- name: Provision TradePort Droplet
+- name: Initial Setup for TradePort Droplet
   hosts: tradeport
   become: true
 
@@ -45,19 +44,3 @@
         mkdir -p ~/.docker/cli-plugins
         curl -SL https://github.com/docker/compose/releases/download/v2.24.2/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
         chmod +x ~/.docker/cli-plugins/docker-compose
-
-    - name: Upload latest Docker Compose file
-      copy:
-        src: ../docker-compose.dev.yml
-        dest: /root/docker-compose.dev.yml
-        mode: "0644"
-
-    - name: Pull latest Docker images
-      shell: docker compose -f docker-compose.dev.yml pull
-      args:
-        chdir: /root
-
-    - name: Restart services with Docker Compose
-      shell: docker compose -f docker-compose.dev.yml up -d --remove-orphans
-      args:
-        chdir: /root

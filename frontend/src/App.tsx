@@ -6,6 +6,8 @@ const App = () => {
   useEffect(() => {
     const API_URL = import.meta.env.VITE_API_URL;
 
+    console.log("🔍 API URL: ", API_URL);
+
     fetch(`${API_URL}`)
       .then((res) => res.json())
       .then((data) => {

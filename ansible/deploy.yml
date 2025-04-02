@@ -1,0 +1,20 @@
+- name: Deploy Latest Version of TradePort
+  hosts: tradeport
+  become: true
+
+  tasks:
+    - name: Upload updated Docker Compose file
+      copy:
+        src: ../docker-compose.dev.yml
+        dest: /root/docker-compose.dev.yml
+        mode: "0644"
+
+    - name: Pull latest Docker images
+      shell: docker compose -f docker-compose.dev.yml pull
+      args:
+        chdir: /root
+
+    - name: Restart services with Docker Compose
+      shell: docker compose -f docker-compose.dev.yml up -d --remove-orphans
+      args:
+        chdir: /root
