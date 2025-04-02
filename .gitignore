@@ -4,6 +4,8 @@
 # .tfstate files
 *.tfstate
 *.tfstate.*
+*.tfvars
+*.tfvars.*
 
 # Crash log files
 crash.log
@@ -15,7 +17,9 @@ crash.*.log
 *.tfvars.json
 
 # ✅ But allow this specific file to be committed
-!terraform.tfvars
+# !terraform.tfvars
+
+terraform.tfvars
 
 # Ignore override files as they are usually used to override resources locally
 override.tf
