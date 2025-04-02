@@ -52,9 +52,9 @@ jobs:
           script: |
             cd ${{ env.REMOTE_DIR }}
             echo "Pulling updated images from Docker Hub..."
-            docker compose -f dockercompose.dev.yml pull
+            docker compose -f docker-compose.dev.yml pull
             echo "Recreating containers with latest images..."
-            docker compose -f dockercompose.dev.yml up -d --force-recreate
+            docker compose -f docker-compose.dev.yml up -d --force-recreate
 
       - name: 📋 Deployment Summary
         run: |
