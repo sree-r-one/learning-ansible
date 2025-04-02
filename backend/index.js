@@ -7,6 +7,7 @@ const port = 3000;
 const allowedOrigins = [
   "http://localhost:5173", // browser running on host machine
   "http://frontend:5173", // frontend container in Docker
+  "http://206.189.32.244:5173", // public IP of the host machine
 ];
 
 app.use(
