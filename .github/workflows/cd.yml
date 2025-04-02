@@ -69,9 +69,8 @@ jobs:
         id: get_ip
         working-directory: ./terraform
         run: |
-          # More robust extraction of IP address
-          IP=$(terraform output -json droplet_ip | jq -r '.')
-          if [ -z "$IP" ] || [ "$IP" = "null" ]; then
+          IP=$(terraform output -raw droplet_ip)
+          if [ -z "$IP" ]; then
             echo "Failed to get droplet IP"
             exit 1
           fi
