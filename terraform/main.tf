@@ -19,14 +19,25 @@ data "digitalocean_droplet" "existing" {
 
 # 2️⃣ Resource block to create new droplet (if create_droplet is true)
 resource "digitalocean_droplet" "tradeport" {
-  count  = var.create_droplet ? 1 : 0
-  name   = var.droplet_name
-  region = "sgp1"
-  size   = "s-1vcpu-1gb"
-  image  = "ubuntu-24-04-x64"
-
+  count    = var.create_droplet ? 1 : 0
+  name     = var.droplet_name
+  region   = var.region
+  size     = var.droplet_size
+  image    = var.droplet_image
   ssh_keys = [var.ssh_key_id]
   tags     = ["tradeport", "staging"]
+
+  # Ensure proper SSH/firewall access
+  provisioner "remote-exec" {
+    inline = ["echo 'Droplet is ready!'"]
+    
+    connection {
+      type        = "ssh"
+      user        = "root"
+      host        = self.ipv4_address
+      private_key = var.ssh_private_key_content != "" ? var.ssh_private_key_content : file(var.ssh_private_key_path)
+    }
+  }
 }
 
 # 3️⃣ Output IP from whichever was selected

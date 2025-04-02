@@ -1,4 +1,4 @@
-name: Stage 1 – CI – Build Only
+name: Stage 1 – CI – Build and Test
 
 on:
   pull_request:
@@ -9,13 +9,14 @@ on:
       - main
       - feature/*
       - bugfix/*
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build Application
+    name: Build and Test Application
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Check Frontend Directory
         id: check-frontend
@@ -37,6 +38,12 @@ jobs:
             echo "No backend directory with package.json found. Skipping backend build."
           fi
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
       - name: Install and Build Frontend
         if: steps.check-frontend.outputs.frontend_exists == 'true'
         working-directory: frontend
@@ -49,3 +56,37 @@ jobs:
         working-directory: backend
         run: |
           npm ci
+          
+      - name: Test Docker Build Frontend
+        if: steps.check-frontend.outputs.frontend_exists == 'true'
+        run: |
+          docker build -t test-frontend:${{ github.sha }} -f ./frontend/Dockerfile.dev ./frontend
+          
+      - name: Test Docker Build Backend
+        if: steps.check-backend.outputs.backend_exists == 'true'
+        run: |
+          docker build -t test-backend:${{ github.sha }} -f ./backend/Dockerfile.dev ./backend
+          
+      - name: Validate Terraform Files
+        run: |
+          echo "Validating Terraform files..."
+          cd terraform
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate Ansible Playbooks
+        run: |
+          echo "Validating Ansible playbooks..."
+          pip install ansible
+          cd ansible
+          for playbook in *.yml; do
+            ansible-playbook --syntax-check $playbook || exit 1
+          done
+          
+      - name: Summary
+        run: |
+          echo "## CI Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend Build: ${{ steps.check-frontend.outputs.frontend_exists == 'true' && 'Success' || 'Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend Build: ${{ steps.check-backend.outputs.backend_exists == 'true' && 'Success' || 'Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Images: Success" >> $GITHUB_STEP_SUMMARY
+          echo "- Infrastructure validation: Success" >> $GITHUB_STEP_SUMMARY

@@ -3,18 +3,18 @@ const cors = require("cors");
 const app = express();
 const port = 3000;
 
-// Allow both local dev and production frontend URLs
+// Allow both local dev and production frontend URLs - will be dynamically configured
 const allowedOrigins = [
   "http://localhost:5173", // browser running on host machine
   "http://frontend:5173", // frontend container in Docker
-  "http://206.189.32.244:5173", // public IP of the host machine
+  "*", // Allow any origin for now
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
       // Allow requests with no origin (like curl or postman) or if origin is in the list
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
@@ -24,6 +24,7 @@ app.use(
   })
 );
 
+// Regular API endpoint
 app.get("/api", (req, res) => {
   res.json({
     message:
@@ -31,9 +32,22 @@ app.get("/api", (req, res) => {
   });
 });
 
-// app.listen(port, () => {
-//   console.log(`✅ Backend listening at http://localhost:${port}`);
-// });
+// Add health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Add info endpoint
+app.get("/api/info", (req, res) => {
+  res.json({
+    version: process.env.VERSION || "1.0.0",
+    environment: process.env.NODE_ENV || "development",
+    uptime: process.uptime()
+  });
+});
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`✅ Backend listening at http://0.0.0.0:${port}`);
