@@ -11,17 +11,27 @@ provider "digitalocean" {
   token = var.do_token
 }
 
-resource "digitalocean_droplet" "tradeport" {
-  name   = "tradeport-staging"
-  region = "sgp1"                     # Change region if needed
-  size   = "s-1vcpu-1gb"              # Cheapest droplet (~$4–6/mo)
-  image  = "ubuntu-24-04-x64"            
-
-  ssh_keys = [var.ssh_key_id]         # Your public key must be added via DO panel
-
-  tags = ["tradeport", "staging"]
+# 1️⃣ Data block to use existing droplet (if create_droplet is false)
+data "digitalocean_droplet" "existing" {
+  count = var.create_droplet ? 0 : 1
+  name  = var.droplet_name
 }
 
+# 2️⃣ Resource block to create new droplet (if create_droplet is true)
+resource "digitalocean_droplet" "tradeport" {
+  count  = var.create_droplet ? 1 : 0
+  name   = var.droplet_name
+  region = "sgp1"
+  size   = "s-1vcpu-1gb"
+  image  = "ubuntu-24-04-x64"
+
+  ssh_keys = [var.ssh_key_id]
+  tags     = ["tradeport", "staging"]
+}
+
+# 3️⃣ Output IP from whichever was selected
 output "droplet_ip" {
-  value = digitalocean_droplet.tradeport.ipv4_address
+  value = var.create_droplet ?
+    digitalocean_droplet.tradeport[0].ipv4_address :
+    data.digitalocean_droplet.existing[0].ipv4_address
 }
