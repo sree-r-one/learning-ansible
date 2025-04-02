@@ -47,23 +47,38 @@ jobs:
         working-directory: ./terraform
         run: terraform init
 
-      # Apply Terraform configuration to create/update infrastructure
+      # Add plan step for visibility
+      - name: 📊 Terraform Plan
+        working-directory: ./terraform
+        run: |
+          terraform plan -var "do_token=${{ secrets.DO_TOKEN }}" \
+            -var "ssh_key_id=${{ secrets.SSH_KEY_ID }}"
+
+      # Apply Terraform configuration with error handling
       - name: 🚀 Terraform Apply
         working-directory: ./terraform
         run: |
           terraform apply -auto-approve \
             -var "do_token=${{ secrets.DO_TOKEN }}" \
-            -var "ssh_key_id=${{ secrets.SSH_KEY_ID }}"
+            -var "ssh_key_id=${{ secrets.SSH_KEY_ID }}" || {
+              echo "Terraform apply failed"
+              exit 1
+            }
 
       - name: 📝 Get Droplet IP
         id: get_ip
         working-directory: ./terraform
         run: |
-          IP=$(terraform output -raw droplet_ip | head -n 1 | tr -d '\r')
+          # More robust extraction of IP address
+          IP=$(terraform output -json droplet_ip | jq -r '.')
+          if [ -z "$IP" ] || [ "$IP" = "null" ]; then
+            echo "Failed to get droplet IP"
+            exit 1
+          fi
           echo "DROPLET_IP=$IP" >> $GITHUB_ENV
-          echo "Cleaned IP: $IP"
+          echo "Droplet IP: $IP"
 
-      # Set up SSH key for Ansible
+      # Set up SSH key for Ansible with proper permissions and cleanup
       - name: 🔑 Set up SSH key
         run: |
           mkdir -p ~/.ssh
@@ -110,3 +125,9 @@ jobs:
           curl -sSf http://${{ env.DROPLET_IP }}:5173 || echo "Frontend may still be starting"
           # Check backend availability
           curl -sSf http://${{ env.DROPLET_IP }}:3000/api/health || echo "Backend may still be starting"
+
+      # Add cleanup step at the end of the workflow
+      - name: 🧹 Cleanup sensitive data
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_rsa
